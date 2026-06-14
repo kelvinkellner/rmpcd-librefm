@@ -12,7 +12,7 @@ local function urlencode_table(tbl)
         str = str:gsub("([^%w%-._~])", function(c) return string.format("%%%02X", string.byte(c)) end)
         return str
     end
-    
+
     local parts = {}
     for k, v in pairs(tbl) do
         table.insert(parts, urlencode(k) .. "=" .. urlencode(v))
@@ -84,7 +84,8 @@ local function librefm_update_now_playing(api_key, shared_secret, session_key, s
         body = body_string,
     })
 
-    local body = resp:json()
+    local ok, body = pcall(function() return response:json() end)
+    if not ok then body = nil end
     if tostring(resp.code) ~= "200" then
         log.error("Libre.fm updateNowPlaying failed: HTTP " .. tostring(resp.code))
     elseif body and body.error ~= nil then
@@ -214,7 +215,8 @@ local function scrobble(api_key, session_key, shared_secret, old_song, song_star
         body = body_string,
     })
 
-    local body = resp:json()
+    local ok, body = pcall(function() return response:json() end)
+    if not ok then body = nil end
     if tostring(resp.code) ~= "200" then
         log.error("Libre.fm scrobble failed: HTTP " .. tostring(resp.code))
         return false
@@ -311,13 +313,13 @@ M.setup = function(self, args)
         },
     })
 
-
-    local body = resp:json()
-    if tostring(resp.code) ~= "200" then
-        log.error("Failed to get Libre.fm auth token: HTTP " .. tostring(resp.code))
+    local ok, body = pcall(function() return response:json() end)
+    if not ok then body = nil end
+    if tostring(response.code) ~= "200" then
+        log.error("Failed to get Libre.fm auth token: HTTP " .. tostring(response.code))
         return
     elseif body and body.error ~= nil then
-        log.error("Failed to get Libre.fm auth token: HTTP " .. tostring(resp.code) .. ", error code " .. tostring(body.error))
+        log.error("Failed to get Libre.fm auth token: HTTP " .. tostring(response.code) .. ", error code " .. tostring(body.error))
         return
     end
 
@@ -327,7 +329,7 @@ M.setup = function(self, args)
 
     local session_key = get_session_key(args.api_key, args.shared_secret, token)
     if session_key == nil then
-        sync.set_interval(10000, function(handle)
+        sync.set_interval(15000, function(handle)
             session_key = get_session_key(args.api_key, args.shared_secret, token)
 
             if session_key ~= nil then
